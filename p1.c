@@ -52,6 +52,7 @@ int main(int argc, char **argv)
       // Process 1
 
       dup2(pipe1_fd[PIPE_READ], STDIN_FILENO);
+      convert_binary_to_decimal(input_b);
     }
   } else {
     // Process 0
