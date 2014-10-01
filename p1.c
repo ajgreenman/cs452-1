@@ -14,6 +14,7 @@
 
 void complementer(char *binary_string);
 int convert_binary_to_decimal(char *binary_string);
+void convert_decimal_to_binary(FILE *output, int decimal_value, int length);
 
 /**************************************************************************
  * Main driver of the program.                                            *
@@ -25,13 +26,16 @@ int main(int argc, char **argv)
     return -1;
   }
 
+  // Declare variables.
   pid_t pid;
-  FILE *vector_a, *vector_b;
-  int pipe1_fd[2], pipe2_fd[2], decimal_value;
+  FILE *vector_a, *vector_b, *output;
+  int pipe1_fd[2], pipe2_fd[2], decimal_value, length;
   char input_a[MAX_VECTOR_SIZE], input_b[MAX_VECTOR_SIZE];
 
+  // Open input files.
   vector_a = fopen(argv[1], "r");
   vector_b = fopen(argv[2], "r");
+  output = fopen("output.txt", "w");
 
   // Create pipes.
   pipe(pipe1_fd);
@@ -56,10 +60,27 @@ int main(int argc, char **argv)
       while(fgets(input_a, MAX_VECTOR_SIZE, vector_a) != NULL) {
         // Reads in and process input_a line by line.
 
+        char *position;
+        if((position = strchr(input_a, '\n')) != NULL) {
+          *position = '\0'; // Removes newline character from end of buffer.
+        }
+
+        length = strlen(input_a); // Get the length in bits of input_a.
+
+        decimal_value = convert_binary_to_decimal(input_a); // Convert the binary number to decimal for easier math.
+
         read(pipe2_fd[PIPE_READ], input_b, sizeof(input_b)); // Reads in the two's complimented input_b from the pipe.
+
+        decimal_value += strtol(input_b,  NULL, 10); // Convert string to int and add input_a with input_b.
+
+        convert_decimal_to_binary(output, decimal_value, length); // Convert the decimal number back to a binary string.
       }
 
       close(pipe2_fd[PIPE_READ]); // Close the read portion of pipe 2.
+
+
+
+      exit(0);
     } else {
       // Process 1
 
@@ -70,8 +91,9 @@ int main(int argc, char **argv)
         decimal_value = convert_binary_to_decimal(input_b); // Convert the binary number to decimal for easier math.
         decimal_value++; // Increments the decimal value by 1.
 
-        sprintf(input_b, "%d", decimal_value);
+        sprintf(input_b, "%d", decimal_value); // Convert from int to string.
 
+        // Write the incremented number to the pipe.
         write(pipe2_fd[PIPE_WRITE], (const void *) input_b, (size_t) strlen(input_b) + 1);
 
         sleep(1);
@@ -141,10 +163,24 @@ int convert_binary_to_decimal(char *binary_string)
     sum -= diff;
   }
 
-  printf("%s = %d\n", binary_string, sum);
-
-
   return sum;
+}
+
+void convert_decimal_to_binary(FILE *output, int decimal_value, int length)
+{
+  int n;
+
+  for(int i = length - 1; i >= 0; i--) {
+    n = decimal_value >> i;
+
+    if(n & 1) {
+      fprintf(output, "1");
+    } else {
+      fprintf(output, "0");
+    }
+  }
+
+  fprintf(output, "\n");
 }
 
 /**************************************************************************
